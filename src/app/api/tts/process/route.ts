@@ -32,12 +32,12 @@ function runFFmpeg(args: string[]): Promise<void> {
   });
 }
 
-// Convert WAV to MP3 with 128kbps compression
-async function convertWavToMp3(inputPath: string, outputPath: string): Promise<void> {
+// Convert WAV to MP3 with specified bitrate compression
+async function convertWavToMp3(inputPath: string, outputPath: string, bitrate: string = '128k'): Promise<void> {
   const args = [
     '-i', inputPath,
     '-acodec', 'libmp3lame',
-    '-ab', '128k',
+    '-ab', bitrate,
     '-ar', '24000',
     '-ac', '1',
     '-y', // Overwrite output file
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { audioChunks, operation = 'convert_and_merge', maxSizeMB = 100 } = body;
+    const { audioChunks, operation = 'convert_and_merge', maxSizeMB = 100, bitrate = '128k' } = body;
     
     if (!audioChunks || !Array.isArray(audioChunks)) {
       return NextResponse.json({ error: 'Audio chunks are required' }, { status: 400 });
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
         const wavPath = tempFiles[i];
         const mp3Path = path.join(tempDir, `chunk_${timestamp}_${i}.mp3`);
         
-        await convertWavToMp3(wavPath, mp3Path);
+        await convertWavToMp3(wavPath, mp3Path, bitrate);
         convertedFiles.push(mp3Path);
         
         // Clean up WAV file

@@ -23,6 +23,7 @@ interface AudioProcessorProps {
   onProcessingComplete: (files: ProcessedAudioFile[]) => void;
   onProgress: (progress: number, status: string) => void;
   maxFileSizeMB?: number;
+  bitrate?: '64k' | '128k';
   onRef?: (ref: any) => void;
 }
 
@@ -31,6 +32,7 @@ const AudioProcessor: React.FC<AudioProcessorProps> = ({
   onProcessingComplete,
   onProgress,
   maxFileSizeMB = 100,
+  bitrate = '128k',
   onRef
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -60,7 +62,8 @@ const AudioProcessor: React.FC<AudioProcessorProps> = ({
         body: JSON.stringify({
           audioChunks: pendingChunks,
           operation: 'convert_and_merge',
-          maxSizeMB: maxFileSizeMB
+          maxSizeMB: maxFileSizeMB,
+          bitrate: bitrate
         }),
       });
 
@@ -160,8 +163,8 @@ const AudioProcessor: React.FC<AudioProcessorProps> = ({
           
           <div className="text-sm text-blue-700 mb-3">
             {language === 'en' 
-              ? `${pendingChunks.length} audio chunks ready for processing. Files will be automatically converted to MP3 (128kbps) and merged into files up to ${maxFileSizeMB}MB each.`
-              : `${pendingChunks.length} Audio-Chunks bereit zur Verarbeitung. Dateien werden automatisch zu MP3 (128kbps) konvertiert und in Dateien bis zu ${maxFileSizeMB}MB zusammengeführt.`}
+              ? `${pendingChunks.length} audio chunks ready for processing. Files will be automatically converted to MP3 (${bitrate}bps) and merged into files up to ${maxFileSizeMB}MB each.`
+              : `${pendingChunks.length} Audio-Chunks bereit zur Verarbeitung. Dateien werden automatisch zu MP3 (${bitrate}bps) konvertiert und in Dateien bis zu ${maxFileSizeMB}MB zusammengeführt.`}
           </div>
 
           {!isProcessing && (

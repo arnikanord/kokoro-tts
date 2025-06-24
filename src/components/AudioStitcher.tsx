@@ -144,7 +144,7 @@ const AudioStitcher: React.FC<AudioStitcherProps> = ({
     setProgress(0);
     
     try {
-      const maxFileSize = 30 * 1024 * 1024; // 30MB
+      const maxFileSize = 100 * 1024 * 1024; // 100MB
       const stitchedFiles: AudioFile[] = [];
       let currentGroup: AudioBuffer[] = [];
       let currentGroupSize = 0;
@@ -276,7 +276,7 @@ const AudioStitcher: React.FC<AudioStitcherProps> = ({
 
   const estimateStitchedFiles = () => {
     const totalSize = audioFiles.reduce((sum, file) => sum + file.size, 0);
-    const maxFileSize = 30 * 1024 * 1024;
+    const maxFileSize = 100 * 1024 * 1024;
     const estimatedFiles = Math.ceil(totalSize / maxFileSize);
     return estimatedFiles;
   };
@@ -319,7 +319,7 @@ const AudioStitcher: React.FC<AudioStitcherProps> = ({
               {language === 'en' ? 'Max file size:' : 'Max. Dateigröße:'}
             </span>
             <br />
-            30 MB
+            100 MB
           </div>
         </div>
 
@@ -375,8 +375,8 @@ const AudioStitcher: React.FC<AudioStitcherProps> = ({
             </strong>
             <br />
             {language === 'en' 
-              ? 'Audio chunks will be combined into larger files, each up to 30MB. Files are processed in order and automatically split when the size limit is reached.'
-              : 'Audio-Chunks werden zu größeren Dateien kombiniert, jeweils bis zu 30MB. Dateien werden in Reihenfolge verarbeitet und automatisch aufgeteilt, wenn das Größenlimit erreicht wird.'}
+              ? 'Audio chunks will be combined into larger files, each up to 100MB. Files are processed in order and automatically split when the size limit is reached.'
+              : 'Audio-Chunks werden zu größeren Dateien kombiniert, jeweils bis zu 100MB. Dateien werden in Reihenfolge verarbeitet und automatisch aufgeteilt, wenn das Größenlimit erreicht wird.'}
           </div>
         </div>
       </div>

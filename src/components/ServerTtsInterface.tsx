@@ -5,7 +5,6 @@ import VoiceSelector from './VoiceSelector';
 import FileUploader from './FileUploader';
 import BatchProcessor from './BatchProcessor';
 import AudioDownloader from './AudioDownloader';
-import AudioProcessor from './AudioProcessor';
 import { getTtsApiUrl } from '@/utils/api';
 
 interface ServerTtsInterfaceProps {
@@ -30,8 +29,6 @@ const ServerTtsInterface: React.FC<ServerTtsInterfaceProps> = ({ language }) => 
   const [audioFiles, setAudioFiles] = useState<Array<{url: string, filename: string, size: number}>>([]);
   const [showBatchProcessor, setShowBatchProcessor] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
-  const [processedFiles, setProcessedFiles] = useState<Array<{filename: string, data: string, size: number, format: string, url?: string}>>([]);
-  const [audioProcessorRef, setAudioProcessorRef] = useState<any>(null);
 
   const convertToSpeech = async () => {
     if (!text.trim()) {
@@ -121,22 +118,6 @@ const ServerTtsInterface: React.FC<ServerTtsInterfaceProps> = ({ language }) => 
     setBatchProgress(progress);
   };
 
-  const handleChunkGenerated = (chunk: {data: string, filename: string, size: number, chunkIndex: number}) => {
-    // Temporarily disabled due to MP3 encoding issues
-    // if (audioProcessorRef && audioProcessorRef.addAudioChunk) {
-    //   audioProcessorRef.addAudioChunk(chunk);
-    // }
-    console.log('Audio chunk generated:', chunk.filename, 'size:', chunk.size);
-  };
-
-  const handleProcessingComplete = (files: Array<{filename: string, data: string, size: number, format: string, url?: string}>) => {
-    setProcessedFiles(files);
-    console.log('Audio processing complete:', files.length, 'merged files created');
-  };
-
-  const handleProcessingProgress = (progress: number, status: string) => {
-    console.log('Audio processing progress:', progress, '%', status);
-  };
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
@@ -195,44 +176,6 @@ const ServerTtsInterface: React.FC<ServerTtsInterfaceProps> = ({ language }) => 
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {language === 'en' ? 'Output Format:' : 'Ausgabeformat:'}
-          </label>
-          <div className="flex gap-4">
-            <label className="flex items-center">
-              <input
-                type="radio"
-                value="wav"
-                checked={outputFormat === 'wav'}
-                onChange={(e) => setOutputFormat(e.target.value as 'wav' | 'mp3')}
-                disabled={isLoading || showBatchProcessor}
-                className="mr-2"
-              />
-              WAV {language === 'en' ? '(Higher quality)' : '(Höhere Qualität)'}
-            </label>
-            {processingMode === 'local' && (
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  value="mp3"
-                  checked={outputFormat === 'mp3'}
-                  onChange={(e) => setOutputFormat(e.target.value as 'wav' | 'mp3')}
-                  disabled={isLoading || showBatchProcessor}
-                  className="mr-2"
-                />
-                MP3 {language === 'en' ? '(Smaller size)' : '(Kleinere Dateigröße)'}
-              </label>
-            )}
-          </div>
-          {processingMode === 'huggingface' && (
-            <p className="text-sm text-gray-500 mt-1">
-              {language === 'en' 
-                ? 'Hugging Face model outputs WAV format only. Use Local VPS for MP3 conversion.'
-                : 'Hugging Face Modell gibt nur WAV-Format aus. Verwenden Sie lokalen VPS für MP3-Konvertierung.'}
-            </p>
-          )}
-        </div>
 
         <FileUploader
           onFileUpload={handleFileUpload}
@@ -276,7 +219,6 @@ const ServerTtsInterface: React.FC<ServerTtsInterfaceProps> = ({ language }) => 
             processingMode={processingMode}
             onComplete={handleBatchComplete}
             onProgress={handleBatchProgress}
-            onChunkGenerated={handleChunkGenerated}
           />
         ) : (
           <div className="flex flex-wrap gap-3">
@@ -349,64 +291,7 @@ const ServerTtsInterface: React.FC<ServerTtsInterfaceProps> = ({ language }) => 
           }}
         />
 
-        <AudioProcessor
-          onRef={setAudioProcessorRef}
-          language={language}
-          onProcessingComplete={handleProcessingComplete}
-          onProgress={handleProcessingProgress}
-          maxFileSizeMB={100}
-        />
 
-        {processedFiles.length > 0 && (
-          <div className="bg-green-50 border border-green-200 rounded-md p-4">
-            <h3 className="text-lg font-medium text-green-800 mb-3">
-              {language === 'en' ? '🎵 Processed Audio Files' : '🎵 Verarbeitete Audiodateien'}
-            </h3>
-            <div className="space-y-2">
-              {processedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between bg-white p-3 rounded border">
-                  <div>
-                    <span className="font-medium">{file.filename}</span>
-                    <span className="text-sm text-gray-500 ml-2">
-                      ({(file.size / (1024 * 1024)).toFixed(1)} MB)
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    {file.url && (
-                      <audio controls className="h-8">
-                        <source src={file.url} type="audio/mpeg" />
-                      </audio>
-                    )}
-                    <button
-                      onClick={() => {
-                        const a = document.createElement('a');
-                        a.href = `data:audio/mpeg;base64,${file.data}`;
-                        a.download = file.filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                      }}
-                      className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-                    >
-                      {language === 'en' ? 'Download' : 'Download'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => {
-                processedFiles.forEach(file => {
-                  if (file.url) URL.revokeObjectURL(file.url);
-                });
-                setProcessedFiles([]);
-              }}
-              className="mt-3 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              {language === 'en' ? 'Clear Processed Files' : 'Verarbeitete Dateien löschen'}
-            </button>
-          </div>
-        )}
 
         <div className="bg-green-50 border border-green-200 rounded-md p-4">
           <h3 className="text-lg font-medium text-green-800 mb-2">

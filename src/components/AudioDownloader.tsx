@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import AudioStitcher from './AudioStitcher';
+import Mp3Converter from './Mp3Converter';
 
 interface AudioFile {
   url: string;
@@ -19,6 +20,8 @@ interface AudioDownloaderProps {
 const AudioDownloader: React.FC<AudioDownloaderProps> = ({ audioFiles, language, outputFormat, onClear }) => {
   const [stitchedFiles, setStitchedFiles] = useState<AudioFile[]>([]);
   const [showStitcher, setShowStitcher] = useState(false);
+  const [mp3Files, setMp3Files] = useState<Array<{filename: string, data: string, size: number, url: string}>>([]);
+  const [showMp3Converter, setShowMp3Converter] = useState(false);
   const downloadFile = (audioFile: AudioFile) => {
     const a = document.createElement('a');
     a.href = audioFile.url;
@@ -89,7 +92,10 @@ const AudioDownloader: React.FC<AudioDownloaderProps> = ({ audioFiles, language,
               onClear();
               setStitchedFiles([]);
               setShowStitcher(false);
+              setMp3Files([]);
+              setShowMp3Converter(false);
               stitchedFiles.forEach(file => URL.revokeObjectURL(file.url));
+              mp3Files.forEach(file => URL.revokeObjectURL(file.url));
             }}
             className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
           >
@@ -166,6 +172,12 @@ const AudioDownloader: React.FC<AudioDownloaderProps> = ({ audioFiles, language,
             >
               📥 {language === 'en' ? 'Download All Stitched' : 'Alle verbundenen herunterladen'}
             </button>
+            <button
+              onClick={() => setShowMp3Converter(!showMp3Converter)}
+              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-medium"
+            >
+              🎵 {language === 'en' ? 'Convert to MP3' : 'Zu MP3 konvertieren'}
+            </button>
           </div>
 
           <div className="bg-white rounded border max-h-48 overflow-y-auto">
@@ -191,6 +203,85 @@ const AudioDownloader: React.FC<AudioDownloaderProps> = ({ audioFiles, language,
                   <button
                     onClick={() => downloadFile(file)}
                     className="p-2 text-green-600 hover:bg-green-50 rounded"
+                    title={language === 'en' ? 'Download' : 'Herunterladen'}
+                  >
+                    📥
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showMp3Converter && stitchedFiles.length > 0 && (
+        <Mp3Converter
+          audioFiles={stitchedFiles}
+          language={language}
+          onConversionComplete={(files) => {
+            setMp3Files(files);
+            setShowMp3Converter(false);
+          }}
+        />
+      )}
+
+      {mp3Files.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-md p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-medium text-orange-800">
+              🎵 {language === 'en' ? 'MP3 Files Ready!' : 'MP3-Dateien bereit!'}
+            </h3>
+            <div className="text-sm text-orange-700">
+              {mp3Files.length} {language === 'en' ? 'MP3 files' : 'MP3-Dateien'} • {formatFileSize(mp3Files.reduce((sum, file) => sum + file.size, 0))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => {
+                mp3Files.forEach((file, index) => {
+                  setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = `data:audio/mpeg;base64,${file.data}`;
+                    a.download = file.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }, index * 500);
+                });
+              }}
+              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-medium"
+            >
+              📥 {language === 'en' ? 'Download All MP3' : 'Alle MP3 herunterladen'}
+            </button>
+          </div>
+
+          <div className="bg-white rounded border max-h-48 overflow-y-auto">
+            {mp3Files.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-gray-50">
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-gray-900">
+                    {file.filename}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {formatFileSize(file.size)}
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <audio controls className="h-8">
+                    <source src={file.url} type="audio/mpeg" />
+                  </audio>
+                  <button
+                    onClick={() => {
+                      const a = document.createElement('a');
+                      a.href = `data:audio/mpeg;base64,${file.data}`;
+                      a.download = file.filename;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                    }}
+                    className="p-2 text-orange-600 hover:bg-orange-50 rounded"
                     title={language === 'en' ? 'Download' : 'Herunterladen'}
                   >
                     📥
