@@ -39,3 +39,23 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# logs
+logs/
+*.log
+
+# temporary files
+temp/
+tmp/
+*.tmp
+
+# audio test files
+test_audio*.wav
+test_final*.wav
+
+# PM2 runtime files
+.pm2/
+
+# Large model files (optional - uncomment if models are too large for git)
+# models/
+# *.onnx

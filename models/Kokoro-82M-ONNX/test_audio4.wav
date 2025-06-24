@@ -1,1 +1,0 @@
-{"error":"TTS generation failed","details":"ENOENT: no such file or directory, open '/projects/web/kokoro-tts/.next/server/voices/af_sky.bin'"}
