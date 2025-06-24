@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kokoro TTS Test</title>
+</head>
+<body>
+    <h1>Kokoro TTS Direct Test</h1>
+    <button onclick="testKokoro()">Test Kokoro TTS</button>
+    <div id="status"></div>
+    <audio id="audioPlayer" controls style="display: none;"></audio>
+
+    <script type="module">
+        window.testKokoro = async function() {
+            const status = document.getElementById('status');
+            const audioPlayer = document.getElementById('audioPlayer');
+            
+            try {
+                status.textContent = 'Loading Kokoro.js...';
+                
+                // Import from CDN or local
+                const { KokoroTTS } = await import('/node_modules/kokoro-js/dist/index.js');
+                status.textContent = 'Kokoro.js loaded, initializing TTS...';
+                
+                const tts = await KokoroTTS.from_pretrained(
+                    "onnx-community/Kokoro-82M-ONNX",
+                    { dtype: "q8" }
+                );
+                
+                status.textContent = 'TTS initialized, generating audio...';
+                
+                const audio = await tts.generate("Hello, this is a test.", { voice: "af_sky" });
+                
+                status.textContent = 'Audio generated, creating playable URL...';
+                console.log('Generated audio:', audio);
+                
+                // Handle different audio formats
+                let audioData;
+                if (audio instanceof ArrayBuffer) {
+                    audioData = audio;
+                } else if (audio.buffer) {
+                    audioData = audio.buffer;
+                } else if (audio.data) {
+                    audioData = audio.data;
+                } else {
+                    throw new Error('Unknown audio format');
+                }
+                
+                const blob = new Blob([audioData], { type: 'audio/wav' });
+                const url = URL.createObjectURL(blob);
+                
+                audioPlayer.src = url;
+                audioPlayer.style.display = 'block';
+                status.textContent = 'Success! Audio ready to play.';
+                
+            } catch (error) {
+                console.error('Test failed:', error);
+                status.textContent = `Error: ${error.message}`;
+            }
+        };
+    </script>
+</body>
+</html>
