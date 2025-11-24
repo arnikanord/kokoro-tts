@@ -2,17 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 
-// Check if Hugging Face configuration is available
-const HF_API_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
-const HF_API_URL = process.env.HUGGINGFACE_TTS_API_URL;
-const USE_HUGGINGFACE = HF_API_TOKEN && HF_API_URL;
-
-// Check if local model exists
+// Check if local model exists (this can stay at module level as it's a file system check)
 const modelPath = path.join(process.cwd(), 'models', 'Kokoro-82M-ONNX');
 const HAS_LOCAL_MODEL = fs.existsSync(modelPath);
 
 // Hugging Face API function for Gradio-based spaces
 async function generateWithHuggingFace(text: string, voice: string, format: string = 'wav') {
+  // Read environment variables at runtime
+  const HF_API_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
+  const HF_API_URL = process.env.HUGGINGFACE_TTS_API_URL;
+
   if (!HF_API_TOKEN || !HF_API_URL) {
     throw new Error('Hugging Face API configuration missing');
   }
@@ -102,15 +101,24 @@ async function generateWithLocalModel(text: string, voice: string) {
 // Server-side TTS endpoint using Kokoro.js with local model or Hugging Face API
 export async function POST(request: NextRequest) {
   try {
+    // Read environment variables at runtime
+    const HF_API_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
+    const HF_API_URL = process.env.HUGGINGFACE_TTS_API_URL;
+    const USE_HUGGINGFACE = HF_API_TOKEN && HF_API_URL;
+
     const { text, voice = 'af_sky', language = 'en', format = 'mp3', processingMode = 'huggingface' } = await request.json();
 
     if (!text || text.trim().length === 0) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 });
     }
 
+    // Debug logging (masking sensitive values)
     console.log('TTS API called with text:', text.substring(0, 50) + '...');
     console.log('Has local model:', HAS_LOCAL_MODEL);
-    console.log('Hugging Face configured:', USE_HUGGINGFACE);
+    console.log('Hugging Face Config Check:');
+    console.log('  - HUGGINGFACE_API_TOKEN:', HF_API_TOKEN ? `***${HF_API_TOKEN.slice(-4)}` : 'MISSING');
+    console.log('  - HUGGINGFACE_TTS_API_URL:', HF_API_URL || 'MISSING');
+    console.log('  - Hugging Face configured:', USE_HUGGINGFACE);
     console.log('User selected processing mode:', processingMode);
 
     let audioBuffer: ArrayBuffer;

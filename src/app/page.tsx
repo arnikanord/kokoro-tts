@@ -27,6 +27,11 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-8">
             <div className="flex justify-center items-center gap-4 mb-4">
+              <img 
+                src="/logo.png" 
+                alt="Kokoro TTS Logo" 
+                className="h-12 w-auto"
+              />
               <h1 className="text-4xl font-bold text-gray-800">
                 Kokoro TTS
               </h1>
@@ -61,6 +66,11 @@ export default function Home() {
       <div className="container mx-auto px-4">
         <div className="text-center mb-8">
           <div className="flex justify-center items-center gap-4 mb-4">
+            <img 
+              src="/logo.png" 
+              alt="Kokoro TTS Logo" 
+              className="h-12 w-auto"
+            />
             <h1 className="text-4xl font-bold text-gray-800">
               {language === 'en' ? 'Kokoro TTS' : 'Kokoro TTS'}
             </h1>

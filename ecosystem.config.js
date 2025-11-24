@@ -4,6 +4,8 @@ module.exports = {
     script: 'npm',
     args: 'start',
     cwd: '/projects/web/kokoro-tts',
+    // Note: Next.js automatically loads .env.local when running 'next start'
+    // Environment variables are now read at runtime in the API routes
     env: {
       NODE_ENV: 'production',
       PORT: '3006'

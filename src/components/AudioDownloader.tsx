@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import AudioStitcher from './AudioStitcher';
-import Mp3Converter from './Mp3Converter';
+// MP3 conversion functionality commented out - can be restored if needed
+// import Mp3Converter from './Mp3Converter';
 
 interface AudioFile {
   url: string;
@@ -172,12 +173,13 @@ const AudioDownloader: React.FC<AudioDownloaderProps> = ({ audioFiles, language,
             >
               📥 {language === 'en' ? 'Download All Stitched' : 'Alle verbundenen herunterladen'}
             </button>
-            <button
+            {/* MP3 conversion button commented out - can be restored if needed */}
+            {/* <button
               onClick={() => setShowMp3Converter(!showMp3Converter)}
               className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 font-medium"
             >
               🎵 {language === 'en' ? 'Convert to MP3' : 'Zu MP3 konvertieren'}
-            </button>
+            </button> */}
           </div>
 
           <div className="bg-white rounded border max-h-48 overflow-y-auto">
@@ -214,7 +216,8 @@ const AudioDownloader: React.FC<AudioDownloaderProps> = ({ audioFiles, language,
         </div>
       )}
 
-      {showMp3Converter && stitchedFiles.length > 0 && (
+      {/* MP3 conversion functionality commented out - can be restored if needed */}
+      {/* {showMp3Converter && stitchedFiles.length > 0 && (
         <Mp3Converter
           audioFiles={stitchedFiles}
           language={language}
@@ -291,7 +294,7 @@ const AudioDownloader: React.FC<AudioDownloaderProps> = ({ audioFiles, language,
             ))}
           </div>
         </div>
-      )}
+      )} */}
 
       <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
         <div className="flex items-start">

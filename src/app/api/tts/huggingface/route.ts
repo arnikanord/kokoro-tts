@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const HF_API_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
-const HF_API_URL = process.env.HUGGINGFACE_TTS_API_URL;
-
 export async function POST(request: NextRequest) {
   try {
+    // Read environment variables at runtime
+    const HF_API_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
+    const HF_API_URL = process.env.HUGGINGFACE_TTS_API_URL;
+
     const { text, voice = 'af_sky', format = 'wav' } = await request.json();
 
     if (!text || text.trim().length === 0) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 });
     }
+
+    // Debug logging (masking sensitive values)
+    console.log('HF API Config Check:');
+    console.log('  - HUGGINGFACE_API_TOKEN:', HF_API_TOKEN ? `***${HF_API_TOKEN.slice(-4)}` : 'MISSING');
+    console.log('  - HUGGINGFACE_TTS_API_URL:', HF_API_URL || 'MISSING');
 
     if (!HF_API_TOKEN || !HF_API_URL) {
       return NextResponse.json({ error: 'Hugging Face API configuration missing' }, { status: 500 });
