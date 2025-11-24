@@ -5,7 +5,7 @@ import VoiceSelector from './VoiceSelector';
 import FileUploader from './FileUploader';
 import BatchProcessor from './BatchProcessor';
 import AudioDownloader from './AudioDownloader';
-import { getTtsApiUrl } from '@/utils/api';
+import { getTtsApiUrl, getTtsProcessApiUrl } from '@/utils/api';
 
 interface ServerTtsInterfaceProps {
   language: 'en' | 'de';
@@ -29,6 +29,10 @@ const ServerTtsInterface: React.FC<ServerTtsInterfaceProps> = ({ language }) => 
   const [audioFiles, setAudioFiles] = useState<Array<{url: string, filename: string, size: number}>>([]);
   const [showBatchProcessor, setShowBatchProcessor] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
+  const [maxFileSizeMB, setMaxFileSizeMB] = useState<50 | 100>(50);
+  const [isConverting, setIsConverting] = useState(false);
+  const [conversionProgress, setConversionProgress] = useState(0);
+  const [conversionStatus, setConversionStatus] = useState<string>('');
 
   const convertToSpeech = async () => {
     if (!text.trim()) {
@@ -95,6 +99,9 @@ const ServerTtsInterface: React.FC<ServerTtsInterfaceProps> = ({ language }) => 
     setAudioFiles([]);
     setShowBatchProcessor(false);
     setBatchProgress(0);
+    setIsConverting(false);
+    setConversionProgress(0);
+    setConversionStatus('');
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
     }
@@ -108,10 +115,118 @@ const ServerTtsInterface: React.FC<ServerTtsInterfaceProps> = ({ language }) => 
     setError(null);
   };
 
-  const handleBatchComplete = (files: Array<{url: string, filename: string, size: number}>) => {
-    setAudioFiles(files);
+  const handleBatchComplete = async (files: Array<{url: string, filename: string, size: number}>) => {
     setShowBatchProcessor(false);
     setBatchProgress(100);
+    
+    // Automatically convert WAV files to MP3 and merge them
+    setIsConverting(true);
+    setConversionProgress(0);
+    setConversionStatus(language === 'en' ? 'Converting to MP3...' : 'Konvertiere zu MP3...');
+    
+    try {
+      // Convert blob URLs to base64
+      const audioChunks = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        setConversionProgress((i / files.length) * 30); // 30% for file preparation
+        
+        try {
+          const response = await fetch(files[i].url);
+          const arrayBuffer = await response.arrayBuffer();
+          
+          // Convert ArrayBuffer to base64
+          const uint8Array = new Uint8Array(arrayBuffer);
+          let base64Data = '';
+          const chunkSize = 8192; // Process in chunks to avoid stack overflow
+          
+          for (let j = 0; j < uint8Array.length; j += chunkSize) {
+            const chunk = uint8Array.slice(j, j + chunkSize);
+            base64Data += String.fromCharCode(...chunk);
+          }
+          base64Data = btoa(base64Data);
+          
+          audioChunks.push({
+            data: base64Data,
+            filename: files[i].filename,
+            size: files[i].size,
+            chunkIndex: i
+          });
+        } catch (conversionError) {
+          console.warn('Failed to convert file for processing:', conversionError);
+        }
+      }
+      
+      setConversionProgress(40);
+      setConversionStatus(language === 'en' ? 'Sending to server for conversion...' : 'Sende an Server zur Konvertierung...');
+      
+      // Send to process API for MP3 conversion and merging
+      const processResponse = await fetch(getTtsProcessApiUrl(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audioChunks: audioChunks,
+          operation: 'convert_and_merge',
+          maxSizeMB: maxFileSizeMB,
+          bitrate: '128k'
+        }),
+      });
+      
+      if (!processResponse.ok) {
+        const errorData = await processResponse.json();
+        throw new Error(errorData.error || 'MP3 conversion failed');
+      }
+      
+      setConversionProgress(70);
+      setConversionStatus(language === 'en' ? 'Merging files...' : 'Dateien zusammenführen...');
+      
+      const result = await processResponse.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'MP3 conversion failed');
+      }
+      
+      setConversionProgress(90);
+      setConversionStatus(language === 'en' ? 'Finalizing files...' : 'Finalisiere Dateien...');
+      
+      // Convert base64 MP3 files back to blob URLs
+      const mp3Files: Array<{url: string, filename: string, size: number}> = result.files.map((file: any) => {
+        const audioData = atob(file.data);
+        const audioArray = new Uint8Array(audioData.length);
+        for (let i = 0; i < audioData.length; i++) {
+          audioArray[i] = audioData.charCodeAt(i);
+        }
+        const blob = new Blob([audioArray], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        
+        return {
+          url: url,
+          filename: file.filename,
+          size: file.size
+        };
+      });
+      
+      // Clean up old WAV file URLs
+      files.forEach(file => URL.revokeObjectURL(file.url));
+      
+      setAudioFiles(mp3Files);
+      setConversionProgress(100);
+      setConversionStatus(language === 'en' ? 'Conversion complete!' : 'Konvertierung abgeschlossen!');
+      
+    } catch (error) {
+      console.error('MP3 conversion failed:', error);
+      setError((error as Error).message);
+      // Fall back to original WAV files if conversion fails
+      setAudioFiles(files);
+    } finally {
+      setIsConverting(false);
+      setTimeout(() => {
+        setConversionStatus('');
+        setConversionProgress(0);
+      }, 2000);
+    }
   };
 
   const handleBatchProgress = (progress: number) => {
@@ -211,15 +326,69 @@ const ServerTtsInterface: React.FC<ServerTtsInterfaceProps> = ({ language }) => 
         </div>
 
         {showBatchProcessor && text.length > 500 ? (
-          <BatchProcessor
-            text={text}
-            voice={selectedVoice}
-            language={language}
-            outputFormat={outputFormat}
-            processingMode={processingMode}
-            onComplete={handleBatchComplete}
-            onProgress={handleBatchProgress}
-          />
+          <>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {language === 'en' ? 'Max file size per merged file:' : 'Maximale Dateigröße pro zusammengeführter Datei:'}
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="50"
+                    checked={maxFileSizeMB === 50}
+                    onChange={(e) => setMaxFileSizeMB(50)}
+                    disabled={isConverting}
+                    className="mr-2"
+                  />
+                  50 MB {language === 'en' ? '(More files, easier to download)' : '(Mehr Dateien, einfacherer Download)'}
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    value="100"
+                    checked={maxFileSizeMB === 100}
+                    onChange={(e) => setMaxFileSizeMB(100)}
+                    disabled={isConverting}
+                    className="mr-2"
+                  />
+                  100 MB {language === 'en' ? '(Fewer files, larger size)' : '(Weniger Dateien, größere Größe)'}
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {language === 'en' 
+                  ? 'Files will be automatically converted to MP3 and merged after batch processing.'
+                  : 'Dateien werden nach der Batch-Verarbeitung automatisch zu MP3 konvertiert und zusammengeführt.'}
+              </p>
+            </div>
+            <BatchProcessor
+              text={text}
+              voice={selectedVoice}
+              language={language}
+              outputFormat={outputFormat}
+              processingMode={processingMode}
+              onComplete={handleBatchComplete}
+              onProgress={handleBatchProgress}
+            />
+            {isConverting && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-blue-800">
+                    {conversionStatus}
+                  </span>
+                  <span className="text-sm text-blue-700">
+                    {Math.round(conversionProgress)}%
+                  </span>
+                </div>
+                <div className="w-full bg-blue-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${conversionProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex flex-wrap gap-3">
             <button

@@ -81,8 +81,57 @@ async function mergeAudioFiles(inputPaths: string[], outputPath: string): Promis
   }
 }
 
+// Clean up old temporary files to prevent disk space issues
+async function cleanupOldTempFiles(maxAgeMinutes: number = 30): Promise<void> {
+  const tempDir = path.join(process.cwd(), 'temp');
+  
+  try {
+    // Check if temp directory exists
+    const stats = await fs.promises.stat(tempDir);
+    if (!stats.isDirectory()) {
+      return;
+    }
+    
+    const files = await fs.promises.readdir(tempDir);
+    const now = Date.now();
+    const maxAge = maxAgeMinutes * 60 * 1000;
+    let cleanedCount = 0;
+    
+    for (const file of files) {
+      const filePath = path.join(tempDir, file);
+      try {
+        const fileStats = await fs.promises.stat(filePath);
+        const fileAge = now - fileStats.mtime.getTime();
+        
+        if (fileAge > maxAge) {
+          await fs.promises.unlink(filePath);
+          cleanedCount++;
+        }
+      } catch (error) {
+        // File might have been deleted already, ignore
+        console.warn('Failed to check/clean up file:', file, error);
+      }
+    }
+    
+    if (cleanedCount > 0) {
+      console.log(`Cleaned up ${cleanedCount} old temp file(s) older than ${maxAgeMinutes} minutes`);
+    }
+  } catch (error) {
+    // Directory might not exist yet, that's okay
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.warn('Error during temp file cleanup:', error);
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   const tempDir = path.join(process.cwd(), 'temp');
+  
+  // Clean up old files (older than 30 minutes) before processing
+  // This runs asynchronously and won't block the request
+  cleanupOldTempFiles(30).catch(error => {
+    console.warn('Background cleanup failed:', error);
+  });
   
   // Ensure temp directory exists
   try {
